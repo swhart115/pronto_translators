@@ -23,12 +23,11 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Int32.h>
 #include <sensor_msgs/LaserScan.h>
-#include <atlas_msgs/ForceTorqueSensors.h>
+//#include <atlas_msgs/ForceTorqueSensors.h>
 
-#include <atlas_hardware_interface/AtlasFootSensor.h>
-#include <atlas_hardware_interface/AtlasOdometry.h>
-#include <atlas_hardware_interface/AtlasControlDataFromRobot.h>
-#include <atlas_hardware_interface/AtlasRobotBehavior.h>
+#include <pronto_translator_msgs/FootSensor.h>
+#include <pronto_translator_msgs/CachedRawIMUData.h>
+#include <pronto_translator_msgs/RawIMUData.h>
 
 #include <lcm/lcm-cpp.hpp>
 #include <lcmtypes/bot_core.hpp>
@@ -55,27 +54,38 @@ public:
 private:
 
   bool simulation_; 
-  bool control_data_initialized_;
 
   lcm::LCM lcm_publish_ ;
   
   ros::NodeHandle node_;
 
   // data subscribers
-  ros::Subscriber atlas_control_data_sub_; 
+  ros::Subscriber behavior_sub_; 
+  ros::Subscriber foot_sensor_sub_; 
+  ros::Subscriber imu_sub_; 
+  ros::Subscriber raw_imu_sub_; 
   ros::Subscriber joint_states_sub_;
   ros::Subscriber head_joint_states_sub_;  
   ros::Subscriber pose_bdi_sub_;
   ros::Subscriber lidar_sub_;
 
-  // Basic Atals Control data:
-  void atlas_control_data_cb(const atlas_hardware_interface::AtlasControlDataFromRobotConstPtr& msg);
+  // Behavior mode
+  void behavior_cb(const std_msgs::Int32ConstPtr& msg);
 
-  // Joint Angles:
+  // foot sensor data
+  void foot_sensor_cb(const pronto_translator_msgs::FootSensorConstPtr& msg);
+
+  // filtered IMU data
+  void imu_cb(const sensor_msgs::ImuConstPtr& msg);
+
+  // raw filtered IMU data
+  void raw_imu_cb(const pronto_translator_msgs::CachedRawIMUDataConstPtr& msg);
+
+   // Joint Angles:
   void joint_states_cb(const sensor_msgs::JointStateConstPtr& msg); 
 
   // The position and orientation from BDI's own estimator:
-  void pose_bdi_cb(const atlas_hardware_interface::AtlasOdometryConstPtr& msg);
+  void pose_bdi_cb(const nav_msgs::OdometryConstPtr& msg);
 
   // Multisense Joint Angles:
   void head_joint_states_cb(const sensor_msgs::JointStateConstPtr& msg); 
@@ -84,13 +94,12 @@ private:
   void lidar_cb(const sensor_msgs::LaserScanConstPtr& msg);  
 
   // data storage 
-  atlas_hardware_interface::AtlasControlDataFromRobot atlas_control_data_;
   sensor_msgs::Imu imu_data_;
+  pronto_translator_msgs::FootSensor foot_sensor_data_;
   int64_t last_joint_state_utime_;
 
+
   // LCM publishers
-  void publish_imu_batch(); 
-  void publish_behavior();
   void publish_joint_state();
   void publish_lidar(const sensor_msgs::LaserScanConstPtr& msg,string channel );
   void publish_multisense_state(int64_t utime, float position, float velocity);
@@ -100,15 +109,14 @@ private:
   
   bool verbose_;
 
-  boost::mutex control_data_mutex_;
   boost::mutex imu_data_mutex_;
+  boost::mutex foot_data_mutex_;
 
 };
 
 ROS_2_LCM::ROS_2_LCM(ros::NodeHandle node_, bool simulation_) :
     simulation_(simulation_), 
     node_(node_),
-    control_data_initialized_(false),
     verbose_(false) {
 
   ROS_INFO("Initializing Translator");
@@ -124,8 +132,17 @@ ROS_2_LCM::ROS_2_LCM(ros::NodeHandle node_, bool simulation_) :
     pose_bdi_sub_ = node_.subscribe(string("/atlas_hardware/data/odometry"), 100, &ROS_2_LCM::pose_bdi_cb,this); // NEED THIS
   }
 
-  // Atlas Data:
-  atlas_control_data_sub_ = node_.subscribe(string("/atlas_hardware/data/full"), 100, &ROS_2_LCM::atlas_control_data_cb,this); // NEED THIS
+  // Foot sensor:
+  foot_sensor_sub_ = node_.subscribe(string("/pronto_helper/foot_sensor"), 100, &ROS_2_LCM::foot_sensor_cb,this); // NEED THIS
+
+  // Behavior:
+  behavior_sub_ = node_.subscribe(string("/pronto_helper/behavior"), 100, &ROS_2_LCM::behavior_cb,this); // NEED THIS
+
+  // IMU:
+  imu_sub_ = node_.subscribe(string("/pronto_helper/imu"), 100, &ROS_2_LCM::imu_cb,this); // NEED THIS
+
+  // Raw IMU:
+  raw_imu_sub_ = node_.subscribe(string("/pronto_helper/raw_imu"), 100, &ROS_2_LCM::raw_imu_cb,this); // NEED THIS
 
   // Joint Data:
   joint_states_sub_ = node_.subscribe(string("/atlas/joint_states"), 100, &ROS_2_LCM::joint_states_cb,this); // NEED THIS
@@ -141,23 +158,19 @@ ROS_2_LCM::ROS_2_LCM(ros::NodeHandle node_, bool simulation_) :
 ROS_2_LCM::~ROS_2_LCM()  { }
 
 
-int atlas_counter=0;
-void ROS_2_LCM::atlas_control_data_cb(const atlas_hardware_interface::AtlasControlDataFromRobotConstPtr& msg){
-
-//  if (verbose_)
-  if (atlas_counter%100 ==0){
-      ROS_INFO("Got AtlasControlDataFromRobot[%d]", atlas_counter);
+int behavior_counter=0;  
+void ROS_2_LCM::behavior_cb(const std_msgs::Int32ConstPtr& msg) {
+  
+  if (behavior_counter%100 ==0){ 
+    ROS_INFO("BEHAVIOR ID: %d", (int) msg->data);
   }
-  atlas_counter++;
+  behavior_counter++;
 
-  boost::unique_lock<boost::mutex> scoped_lock(control_data_mutex_);
-  atlas_control_data_ = *msg;  // not thread safe, FIXME
-  control_data_initialized_ = true;
-
-  store_imu_raw();
-
-  publish_imu_batch();
-  publish_behavior();
+  pronto::atlas_behavior_t msg_out;
+  msg_out.utime = last_joint_state_utime_;
+  msg_out.behavior = (int) msg->data;
+ 
+  lcm_publish_.publish("ATLAS_BEHAVIOR", &msg_out);
 
 }
 
@@ -174,14 +187,35 @@ void ROS_2_LCM::lidar_cb(const sensor_msgs::LaserScanConstPtr& msg){
 
 }
 
+void ROS_2_LCM::imu_cb(const sensor_msgs::ImuConstPtr& msg) {
+
+  // copy filtered IMU Data
+  boost::unique_lock<boost::mutex> scoped_lock(imu_data_mutex_);
+  imu_data_.header                          = msg->header;
+  imu_data_.orientation                     = msg->orientation;
+  imu_data_.orientation_covariance          = msg->orientation_covariance;
+  imu_data_.angular_velocity                = msg->angular_velocity;
+  imu_data_.angular_velocity_covariance     = msg->angular_velocity_covariance;
+  imu_data_.linear_acceleration             = msg->linear_acceleration;
+  imu_data_.linear_acceleration_covariance  = msg->linear_acceleration_covariance;
+
+}
+
+int foot_sensor_counter=0;  
+void ROS_2_LCM::foot_sensor_cb(const pronto_translator_msgs::FootSensorConstPtr& msg) {
+  
+  if (foot_sensor_counter%100 ==0){ 
+    ROS_INFO("FootSensor[%d]", (int) foot_sensor_counter);
+  }
+  foot_sensor_counter++;
+
+  boost::unique_lock<boost::mutex> scoped_lock(foot_data_mutex_);
+  foot_sensor_data_ = *msg;
+}
+
 
 int gt_counter = 0;
-void ROS_2_LCM::pose_bdi_cb(const atlas_hardware_interface::AtlasOdometryConstPtr& msg) {
-
-  if(!control_data_initialized_) {
-    ROS_WARN("Can't publish pose information -- no control data from robot yet!!");
-    return;
-  }
+void ROS_2_LCM::pose_bdi_cb(const nav_msgs::OdometryConstPtr& msg) {
 
   if (gt_counter%100 ==0){
     ROS_INFO("BDI POSE  [%d]", gt_counter );
@@ -190,24 +224,24 @@ void ROS_2_LCM::pose_bdi_cb(const atlas_hardware_interface::AtlasOdometryConstPt
   gt_counter++;
 
   bot_core::pose_t pose_msg;
-  pose_msg.utime = (int64_t) floor(atlas_control_data_.header.stamp.toNSec()/1000);
+  pose_msg.utime = (int64_t) floor(msg->header.stamp.toNSec()/1000);
 
-  pose_msg.pos[0] = atlas_control_data_.pos_est.position.x;
-  pose_msg.pos[1] = atlas_control_data_.pos_est.position.y;
-  pose_msg.pos[2] = atlas_control_data_.pos_est.position.z;
+  pose_msg.pos[0] = msg->pose.pose.position.x;
+  pose_msg.pos[1] = msg->pose.pose.position.y;
+  pose_msg.pos[2] = msg->pose.pose.position.z;
 
-  pose_msg.orientation[0] =  imu_data_.orientation.w;
-  pose_msg.orientation[1] =  imu_data_.orientation.x;
-  pose_msg.orientation[2] =  imu_data_.orientation.y;
-  pose_msg.orientation[3] =  imu_data_.orientation.z;
+  pose_msg.orientation[0] =  msg->pose.pose.orientation.w;
+  pose_msg.orientation[1] =  msg->pose.pose.orientation.x;
+  pose_msg.orientation[2] =  msg->pose.pose.orientation.y;
+  pose_msg.orientation[3] =  msg->pose.pose.orientation.z;
 
-  pose_msg.vel[0] = atlas_control_data_.pos_est.velocity.x;
-  pose_msg.vel[1] = atlas_control_data_.pos_est.velocity.y;
-  pose_msg.vel[2] = atlas_control_data_.pos_est.velocity.z;
+  pose_msg.vel[0] = msg->twist.twist.linear.x;
+  pose_msg.vel[1] = msg->twist.twist.linear.y;
+  pose_msg.vel[2] = msg->twist.twist.linear.z;
 
-  pose_msg.rotation_rate[0] = imu_data_.angular_velocity.x;
-  pose_msg.rotation_rate[1] = imu_data_.angular_velocity.y;
-  pose_msg.rotation_rate[2] = imu_data_.angular_velocity.z;
+  pose_msg.rotation_rate[0] = msg->twist.twist.angular.x;
+  pose_msg.rotation_rate[1] = msg->twist.twist.angular.y;
+  pose_msg.rotation_rate[2] = msg->twist.twist.angular.z;
 
   pose_msg.accel[0] = imu_data_.linear_acceleration.x;
   pose_msg.accel[1] = imu_data_.linear_acceleration.y;
@@ -235,11 +269,6 @@ inline int getIndex(const std::vector<std::string> &vec, const std::string &str)
 
 int js_counter=0;
 void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
-
-  if(!control_data_initialized_) {
-    ROS_WARN("Can't publish joint information -- no control data from robot yet!!");
-    return;
-  }
 
   if (js_counter%500 ==0){
     ROS_INFO("Got JointState[%d]", js_counter);
@@ -280,7 +309,7 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   int n_joints = jm.size();
   
   pronto::atlas_state_t msg_out;
-  msg_out.utime = (int64_t) atlas_control_data_.header.stamp.toNSec()/1000; // from nsec to usec  
+  msg_out.utime = (int64_t) msg->header.stamp.toNSec()/1000; // from nsec to usec  
 
   if (verbose_)
     std::cout << msg_out.utime << " jnt\n";
@@ -304,8 +333,8 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   // App end FT sensor info
   pronto::force_torque_t force_torque;
   append_foot_sensor_data(force_torque);
-  
   msg_out.force_torque = force_torque;
+  
   lcm_publish_.publish("ATLAS_STATE", &msg_out);
   
   pronto::utime_t utime_msg;
@@ -317,81 +346,35 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
 }
 
 
-void ROS_2_LCM::store_imu_raw() {
 
-  if(!control_data_initialized_) {
-    ROS_WARN("Can't store raw IMU data -- no control data from robot yet!!");
-    return;
-  }
-
-  // copy filtered IMU Data
-  boost::unique_lock<boost::mutex> scoped_lock(imu_data_mutex_);
-  imu_data_.header                          = atlas_control_data_.filtered_imu.header;
-  imu_data_.orientation                     = atlas_control_data_.filtered_imu.orientation;
-  imu_data_.orientation_covariance          = atlas_control_data_.filtered_imu.orientation_covariance;
-  imu_data_.angular_velocity                = atlas_control_data_.filtered_imu.angular_velocity;
-  imu_data_.angular_velocity_covariance     = atlas_control_data_.filtered_imu.angular_velocity_covariance;
-  imu_data_.linear_acceleration             = atlas_control_data_.filtered_imu.linear_acceleration;
-  imu_data_.linear_acceleration_covariance  = atlas_control_data_.filtered_imu.linear_acceleration_covariance;
-
-}
-
-
-void ROS_2_LCM::publish_imu_batch(){
-
-  if(!control_data_initialized_) {
-    ROS_WARN("Can't publish IMU batch information -- no control data from robot yet!!");
-    return;
-  }
+void ROS_2_LCM::raw_imu_cb(const pronto_translator_msgs::CachedRawIMUDataConstPtr& msg){
 
   pronto::atlas_raw_imu_batch_t imu;
-  imu.utime = (int64_t) floor(atlas_control_data_.header.stamp.toNSec()/1000);
+  imu.utime = (int64_t) floor(msg->header.stamp.toNSec()/1000);
 
   imu.num_packets = 15;
   for (size_t i=0; i < 15 ; i++){
     
    /* std::cout << i
-      << " | " <<  atlas_control_data_.raw_imu[i].imu_timestamp
-      << " | " <<  atlas_control_data_.raw_imu[i].packet_count
-      << " | " <<  atlas_control_data_.raw_imu[i].da.x << " " << atlas_control_data_.raw_imu[i].da.y << " " << atlas_control_data_.raw_imu[i].da.z
-      << " | " <<  atlas_control_data_.raw_imu[i].dd.x << " " << atlas_control_data_.raw_imu[i].dd.y << " " << atlas_control_data_.raw_imu[i].dd.z << "\n";*/
+      << " | " <<  msg->data[i].imu_timestamp
+      << " | " <<  msg->data[i].packet_count
+      << " | " <<  msg->data[i].da.x << " " << msg->data[i].da.y << " " << msg->data[i].da.z
+      << " | " <<  msg->data[i].dd.x << " " << msg->data[i].dd.y << " " << msg->data[i].dd.z << "\n";*/
     
     pronto::atlas_raw_imu_t raw;
-    //raw.utime = atlas_control_data_.raw_imu[i].imu_timestamp;
-    raw.utime = (int64_t) floor(atlas_control_data_.raw_imu[i].imu_timestamp.toNSec()/1000); //atlas_control_data_.raw_imu[i].imu_timestamp;
-    raw.packet_count = atlas_control_data_.raw_imu[i].packet_count;
-    raw.delta_rotation[0] = atlas_control_data_.raw_imu[i].da.x;
-    raw.delta_rotation[1] = atlas_control_data_.raw_imu[i].da.y;
-    raw.delta_rotation[2] = atlas_control_data_.raw_imu[i].da.z;
+    //raw.utime = msg->data[i].imu_timestamp;
+    raw.utime = msg->data[i].imu_timestamp;
+    raw.packet_count = msg->data[i].packet_count;
+    raw.delta_rotation[0] = msg->data[i].dax;
+    raw.delta_rotation[1] = msg->data[i].day;
+    raw.delta_rotation[2] = msg->data[i].daz;
     
-    raw.linear_acceleration[0] = atlas_control_data_.raw_imu[i].dd.x;
-    raw.linear_acceleration[1] = atlas_control_data_.raw_imu[i].dd.y;
-    raw.linear_acceleration[2] = atlas_control_data_.raw_imu[i].dd.z;
+    raw.linear_acceleration[0] = msg->data[i].ddx;
+    raw.linear_acceleration[1] = msg->data[i].ddy;
+    raw.linear_acceleration[2] = msg->data[i].ddz;
     imu.raw_imu.push_back( raw );
   }
   lcm_publish_.publish( ("ATLAS_IMU_BATCH") , &imu);
-
-}
-
-
-int behavior_counter=0;  
-void ROS_2_LCM::publish_behavior() {
-  
-  if(!control_data_initialized_) {
-    ROS_WARN("Can't publish behavior information -- no control data from robot yet!!");
-    return;
-  }
-
-  if (behavior_counter%100 ==0){ 
-    ROS_INFO("BEHAVIOR ID: %d", (int) atlas_control_data_.current_behavior.state);
-  }
-  behavior_counter++;
-
-  pronto::atlas_behavior_t msg_out;
-  msg_out.utime = last_joint_state_utime_;
-  msg_out.behavior = (int) atlas_control_data_.current_behavior.state;
- 
-  lcm_publish_.publish("ATLAS_BEHAVIOR", &msg_out);
 
 }
 
@@ -454,17 +437,12 @@ void ROS_2_LCM::publish_multisense_state(int64_t utime, float position, float ve
 
 void ROS_2_LCM::append_foot_sensor_data(pronto::force_torque_t& msg_out){
   
-  if(!control_data_initialized_) {
-    ROS_WARN("Can't append foot sensor information -- no control data from robot yet!!");
-    return;
-  }
-
-  msg_out.l_foot_force_z   =  atlas_control_data_.foot_sensors[0].force.z;
-  msg_out.l_foot_torque_x  =  atlas_control_data_.foot_sensors[0].torque.x;
-  msg_out.l_foot_torque_y  =  atlas_control_data_.foot_sensors[0].torque.y;
-  msg_out.r_foot_force_z   =  atlas_control_data_.foot_sensors[1].force.z;
-  msg_out.r_foot_torque_x  =  atlas_control_data_.foot_sensors[1].torque.x;
-  msg_out.r_foot_torque_y  =  atlas_control_data_.foot_sensors[1].torque.y;
+  msg_out.l_foot_force_z   =  foot_sensor_data_.left_fz;
+  msg_out.l_foot_torque_x  =  foot_sensor_data_.left_mx;
+  msg_out.l_foot_torque_y  =  foot_sensor_data_.left_my;
+  msg_out.r_foot_force_z   =  foot_sensor_data_.right_fz;
+  msg_out.r_foot_torque_x  =  foot_sensor_data_.right_mx;
+  msg_out.r_foot_torque_y  =  foot_sensor_data_.right_my;
 
   msg_out.l_hand_force[0] =  0;
   msg_out.l_hand_force[1] =  0;
