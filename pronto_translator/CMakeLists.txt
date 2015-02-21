@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   pronto_translator_msgs
+  atlas_hardware_interface
 )
 
 ## System dependencies are found with CMake's conventions

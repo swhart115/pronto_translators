@@ -2,7 +2,7 @@
 import argparse
 
 import rospy
-import roslib; roslib.load_manifest("pronto_helper")
+import roslib; roslib.load_manifest("pronto_translator")
 
 import math
 import copy
@@ -13,9 +13,9 @@ from std_msgs.msg import Int32
 from sensor_msgs.msg import JointState, Imu
 from geometry_msgs.msg import Pose, PoseStamped
 from nav_msgs.msg import Odometry
-from atlas_hardware_interface import *
+from atlas_hardware_interface.msg import AtlasControlDataFromRobot, AtlasOdometry
 
-from pronto_translator_msgs import *
+from pronto_translator_msgs.msg import *
 
 class ProntoHelper:
 
@@ -41,7 +41,7 @@ class ProntoHelper:
         fs.right_fz = data.foot_sensors[1].force.z
         fs.right_mx = data.foot_sensors[1].torque.x
         fs.right_my = data.foot_sensors[1].torque.y
-        self.footstep_pub.pubish(fs)
+        self.footsensor_pub.publish(fs)
 
         # publish behavior
         behavior = Int32()
@@ -57,7 +57,7 @@ class ProntoHelper:
         raw_imu = CachedRawIMUData()
         raw_imu.header = data.header
         for i in range(15) :        
-            raw_imu.data[i].utime = data.raw_imu[i].imu_timestamp
+            raw_imu.data[i].imu_timestamp = math.floor(data.raw_imu[i].imu_timestamp.to_nsec()/1000)
             raw_imu.data[i].packet_count = data.raw_imu[i].packet_count;
             raw_imu.data[i].dax = data.raw_imu[i].da.x;
             raw_imu.data[i].day = data.raw_imu[i].da.y;
@@ -65,6 +65,7 @@ class ProntoHelper:
             raw_imu.data[i].ddx = data.raw_imu[i].dd.x;
             raw_imu.data[i].ddy = data.raw_imu[i].dd.y;
             raw_imu.data[i].ddz = data.raw_imu[i].dd.z;
+        self.raw_imu_pub.publish(raw_imu)
 
 
     def atlas_odom_cb(self, data) :
