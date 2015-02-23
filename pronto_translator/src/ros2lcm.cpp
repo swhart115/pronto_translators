@@ -318,7 +318,6 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_aky") , 8  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 27  ));
 */
-/*
 
   jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkz")  , 1  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "back_bky")  , 2  ));
@@ -347,10 +346,10 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 25  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_elx") , 26  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_uwy") , 27  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_mwx") , 28  ));*/
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_mwx") , 28  ));
 
-  //int n_joints = jm.size();
-  int n_joints = msg->name.size();
+  int n_joints = jm.size();
+  //int n_joints = msg->name.size();
   
   pronto::atlas_state_t msg_out;
   msg_out.utime = (int64_t) msg->header.stamp.toNSec()/1000; // from nsec to usec  
@@ -369,12 +368,12 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
 
   for (std::vector<int>::size_type i = 0; i < n_joints; i++)  {
     //std::cout << jm[i].first << " and " << jm[i].second << "\n";
-    //msg_out.joint_position[ jm[i].second ] = msg->position[ jm[i].first ];      
-    //msg_out.joint_velocity[ jm[i].second ] = msg->velocity[ jm[i].first ];
-    //msg_out.joint_effort[ jm[i].second ] = msg->effort[ jm[i].first ];
-    msg_out.joint_position[i] = msg->position[i];
-    msg_out.joint_velocity[i] = msg->velocity[i];
-    msg_out.joint_effort[i] = msg->effort[i];
+    msg_out.joint_position[ jm[i].second ] = msg->position[ jm[i].first ];      
+    msg_out.joint_velocity[ jm[i].second ] = msg->velocity[ jm[i].first ];
+    msg_out.joint_effort[ jm[i].second ]   = msg->effort[ jm[i].first ];
+    //msg_out.joint_position[i] = msg->position[i];
+    //msg_out.joint_velocity[i] = msg->velocity[i];
+    //msg_out.joint_effort[i] = msg->effort[i];
   }
 
   // App end FT sensor info
