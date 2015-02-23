@@ -151,7 +151,7 @@ ROS_2_LCM::ROS_2_LCM(ros::NodeHandle node_, bool simulation_) :
   lidar_sub_ = node_.subscribe(string("/multisense/lidar_scan"), 100, &ROS_2_LCM::lidar_cb,this); // NEED THIS
 
   // Multisense Joint Angles:
-  head_joint_states_sub_ = node_.subscribe(string("/spindle_state"), 100, &ROS_2_LCM::head_joint_states_cb,this); // NEED THIS
+  head_joint_states_sub_ = node_.subscribe(string("/multisense/joint_states"), 100, &ROS_2_LCM::head_joint_states_cb,this); // NEED THIS
   
 };
 
@@ -187,7 +187,13 @@ void ROS_2_LCM::lidar_cb(const sensor_msgs::LaserScanConstPtr& msg){
 
 }
 
+int imu_store_counter=0;
 void ROS_2_LCM::imu_cb(const sensor_msgs::ImuConstPtr& msg) {
+
+  if (imu_store_counter%100 ==0){ // 80
+    ROS_INFO("IMU STORE [%d]", imu_store_counter );
+  }  
+  imu_store_counter++;
 
   // copy filtered IMU Data
   boost::unique_lock<boost::mutex> scoped_lock(imu_data_mutex_);
@@ -205,7 +211,7 @@ int foot_sensor_counter=0;
 void ROS_2_LCM::foot_sensor_cb(const pronto_translator_msgs::FootSensorConstPtr& msg) {
   
   if (foot_sensor_counter%100 ==0){ 
-    ROS_INFO("FootSensor[%d]", (int) foot_sensor_counter);
+    ROS_INFO("FOOT SENSOR[%d]", (int) foot_sensor_counter);
   }
   foot_sensor_counter++;
 
@@ -252,8 +258,14 @@ void ROS_2_LCM::pose_bdi_cb(const nav_msgs::OdometryConstPtr& msg) {
 
 }
 
-
+int head_joint_counter =0;
 void ROS_2_LCM::head_joint_states_cb(const sensor_msgs::JointStateConstPtr& msg){
+
+  if (head_joint_counter%100 ==0){
+    ROS_INFO("HEAD JOINT STATE[%d]", head_joint_counter);
+  }  
+  head_joint_counter++;
+
   int64_t utime = (int64_t) floor(msg->header.stamp.toNSec()/1000);
   float position = msg->position[0];
   float velocity = msg->velocity[0];
@@ -271,13 +283,13 @@ int js_counter=0;
 void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
 
   if (js_counter%500 ==0){
-    ROS_INFO("Got JointState[%d]", js_counter);
+    ROS_INFO("JOINT STATE[%d]", js_counter);
   }  
   js_counter++;
 
   std::vector< std::pair<int,int> > jm;
 
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shx") , 16  ));
+/*  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shx") , 16  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_elx") , 17  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_akx") , 15  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkx") , 2  ));
@@ -305,8 +317,40 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkz") , 0  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_aky") , 8  ));
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 27  ));
+*/
+/*
 
-  int n_joints = jm.size();
+  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkz")  , 1  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bky")  , 2  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkx")  , 3  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "neck_ay")   , 4  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpz") , 5  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpx") , 6  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpy") , 7  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_kny") , 8  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_aky") , 9  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_akx") , 10  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpz") , 11  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpx") , 12  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpy") , 13  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_kny") , 14  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_aky") , 15  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_akx") , 16  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_shz") , 17  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_shx") , 18  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_ely") , 19  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_elx") , 20  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_uwy") , 21  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_mwx") , 22  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shz") , 23  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shx") , 24  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 25  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_elx") , 26  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_uwy") , 27  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_mwx") , 28  ));*/
+
+  //int n_joints = jm.size();
+  int n_joints = msg->name.size();
   
   pronto::atlas_state_t msg_out;
   msg_out.utime = (int64_t) msg->header.stamp.toNSec()/1000; // from nsec to usec  
@@ -323,11 +367,14 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   msg_out.joint_effort.assign(n_joints , std::numeric_limits<int>::min()  );
   msg_out.num_joints = n_joints;
 
-  for (std::vector<int>::size_type i = 0; i < jm.size(); i++)  {
+  for (std::vector<int>::size_type i = 0; i < n_joints; i++)  {
     //std::cout << jm[i].first << " and " << jm[i].second << "\n";
-    msg_out.joint_position[ jm[i].second ] = msg->position[ jm[i].first ];      
-    msg_out.joint_velocity[ jm[i].second ] = msg->velocity[ jm[i].first ];
-    msg_out.joint_effort[ jm[i].second ] = msg->effort[ jm[i].first ];
+    //msg_out.joint_position[ jm[i].second ] = msg->position[ jm[i].first ];      
+    //msg_out.joint_velocity[ jm[i].second ] = msg->velocity[ jm[i].first ];
+    //msg_out.joint_effort[ jm[i].second ] = msg->effort[ jm[i].first ];
+    msg_out.joint_position[i] = msg->position[i];
+    msg_out.joint_velocity[i] = msg->velocity[i];
+    msg_out.joint_effort[i] = msg->effort[i];
   }
 
   // App end FT sensor info
@@ -346,8 +393,13 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
 }
 
 
-
+int raw_imu_counter =0;
 void ROS_2_LCM::raw_imu_cb(const pronto_translator_msgs::CachedRawIMUDataConstPtr& msg){
+
+  if (raw_imu_counter%100 ==0){
+    ROS_INFO("RAW IMU [%d]", raw_imu_counter );
+  }  
+  raw_imu_counter++;
 
   pronto::atlas_raw_imu_batch_t imu;
   imu.utime = (int64_t) floor(msg->header.stamp.toNSec()/1000);
@@ -413,7 +465,7 @@ void ROS_2_LCM::publish_multisense_state(int64_t utime, float position, float ve
 
   msg_out.joint_position[0] = position;
   msg_out.joint_velocity[0] = velocity;
-  msg_out.joint_name[0] = "hokuyo_joint";
+  msg_out.joint_name[0] = "motor_joint";
 
   msg_out.joint_name[1] = "pre_spindle_cal_x_joint";
   msg_out.joint_name[2] = "pre_spindle_cal_y_joint";
