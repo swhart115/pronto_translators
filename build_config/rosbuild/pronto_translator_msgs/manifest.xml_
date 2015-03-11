@@ -1,0 +1,12 @@
+<package>
+  <description brief="pronto_translator_msgs">
+
+     pronto_translator_msgs
+
+  </description>
+  <depend package="rospy"/>
+  <depend package="geometry_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="nav_msgs"/>
+</package>

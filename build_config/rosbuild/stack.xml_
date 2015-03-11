@@ -1,0 +1,9 @@
+<stack>
+  <description brief="pronto_translator">
+
+  </description>
+
+  <depend stack="ros" />
+  <depend stack="ros_comm" />
+
+</stack>
