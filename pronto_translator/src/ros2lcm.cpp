@@ -254,7 +254,8 @@ void ROS_2_LCM::pose_bdi_cb(const nav_msgs::OdometryConstPtr& msg) {
   pose_msg.accel[2] = imu_data_.linear_acceleration.z;
 
   lcm_publish_.publish("POSE_BDI", &pose_msg);   
-  lcm_publish_.publish("POSE_BODY", &pose_msg);    // for now
+  // Enabling this line basically will publish the BDI estimate directly back to ROS
+  // lcm_publish_.publish("POSE_BODY", &pose_msg);    // for now
 
 }
 
@@ -319,34 +320,34 @@ void ROS_2_LCM::joint_states_cb(const sensor_msgs::JointStateConstPtr& msg) {
   jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 27  ));
 */
 
-  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkz")  , 1  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bky")  , 2  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkx")  , 3  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "neck_ay")   , 4  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpz") , 5  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpx") , 6  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpy") , 7  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_kny") , 8  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_aky") , 9  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_akx") , 10  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpz") , 11  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpx") , 12  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpy") , 13  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_kny") , 14  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_aky") , 15  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_akx") , 16  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_shz") , 17  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_shx") , 18  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_ely") , 19  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_elx") , 20  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_uwy") , 21  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_mwx") , 22  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shz") , 23  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shx") , 24  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 25  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_elx") , 26  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_uwy") , 27  ));
-  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_mwx") , 28  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkz")  , 0  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bky")  , 1  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "back_bkx")  , 2  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "neck_ay")   , 3  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpz") , 4  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpx") , 5  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_hpy") , 6  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_kny") , 7  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_aky") , 8  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_leg_akx") , 9  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpz") , 10  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpx") , 11  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_hpy") , 12  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_kny") , 13  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_aky") , 14  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_leg_akx") , 15  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_shz") , 16  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_shx") , 17  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_ely") , 18  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_elx") , 19  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_uwy") , 20  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "l_arm_mwx") , 21  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shz") , 22  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_shx") , 23  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_ely") , 24  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_elx") , 25  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_uwy") , 26  ));
+  jm.push_back (  std::make_pair( getIndex(msg->name, "r_arm_mwx") , 27  ));
 
   int n_joints = jm.size();
   //int n_joints = msg->name.size();
@@ -460,27 +461,11 @@ void ROS_2_LCM::publish_multisense_state(int64_t utime, float position, float ve
     msg_out.joint_velocity.push_back(0);
     msg_out.joint_effort.push_back(0);
   }  
-  msg_out.num_joints = 13;
+  msg_out.num_joints = 1;
 
   msg_out.joint_position[0] = position;
   msg_out.joint_velocity[0] = velocity;
   msg_out.joint_name[0] = "motor_joint";
-
-  msg_out.joint_name[1] = "pre_spindle_cal_x_joint";
-  msg_out.joint_name[2] = "pre_spindle_cal_y_joint";
-  msg_out.joint_name[3] = "pre_spindle_cal_z_joint";
-
-  msg_out.joint_name[4] = "pre_spindle_cal_roll_joint";
-  msg_out.joint_name[5] = "pre_spindle_cal_pitch_joint";
-  msg_out.joint_name[6] = "pre_spindle_cal_yaw_joint";
-
-  msg_out.joint_name[7] = "post_spindle_cal_x_joint";
-  msg_out.joint_name[8] = "post_spindle_cal_x_joint";
-  msg_out.joint_name[9] = "post_spindle_cal_x_joint";
-
-  msg_out.joint_name[10] = "post_spindle_cal_roll_joint";
-  msg_out.joint_name[11] = "post_spindle_cal_pitch_joint";
-  msg_out.joint_name[12] = "post_spindle_cal_yaw_joint";
 
   lcm_publish_.publish("MULTISENSE_STATE", &msg_out);  
 }
