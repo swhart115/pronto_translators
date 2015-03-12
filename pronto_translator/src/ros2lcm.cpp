@@ -129,7 +129,7 @@ ROS_2_LCM::ROS_2_LCM(ros::NodeHandle node_, bool simulation_) :
   if (simulation_) {
     pose_bdi_sub_ = node_.subscribe(string("/ground_truth_odom"), 100, &ROS_2_LCM::pose_bdi_cb,this);  
   } else {
-    pose_bdi_sub_ = node_.subscribe(string("/atlas_hardware/data/odometry"), 100, &ROS_2_LCM::pose_bdi_cb,this); // NEED THIS
+    pose_bdi_sub_ = node_.subscribe(string("/pronto_helper/odom"), 100, &ROS_2_LCM::pose_bdi_cb,this); // NEED THIS
   }
 
   // Foot sensor:

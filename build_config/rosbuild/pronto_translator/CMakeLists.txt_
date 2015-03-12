@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 2.4.6)
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+
+include(cmake/pods.cmake)
+set(POD_NAME pronto_translator)
+
 rosbuild_init()
 
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+
 rosbuild_add_executable(lcm2ros src/lcm2ros.cpp)
-pods_use_pkg_config_packages(lcm2ros lcm lcmtypes_pronto-lcmtypes bot2-core)  
+pods_use_pkg_config_packages(lcm2ros lcm lcmtypes_pronto-lcmtypes bot2-core)
 
 rosbuild_add_executable(ros2lcm src/ros2lcm.cpp)
-pods_use_pkg_config_packages(ros2lcm lcm lcmtypes_pronto-lcmtypes bot2-core eigen3) 
+pods_use_pkg_config_packages(ros2lcm lcm lcmtypes_pronto-lcmtypes bot2-core eigen3)

@@ -3,7 +3,7 @@ import argparse
 
 import rospy
 import roslib; roslib.load_manifest("pronto_translator")
-
+roslib.load_manifest("atlas_hardware_interface")
 import math
 import copy
 import threading
