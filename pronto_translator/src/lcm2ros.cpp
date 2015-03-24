@@ -35,7 +35,6 @@ LCM2ROS::LCM2ROS(boost::shared_ptr<lcm::LCM> &lcm_, ros::NodeHandle &nh_): lcm_(
 }
 
 void LCM2ROS::poseBodyHandler(const lcm::ReceiveBuffer* rbuf, const std::string &channel, const bot_core::pose_t* msg) {
-  ROS_ERROR("LCM2ROS got pose_t");
   nav_msgs::Odometry msgout;
   msgout.header.stamp= ros::Time().fromSec(msg->utime*1E-6);
   msgout.pose.pose.position.x = msg->pos[0];
@@ -63,8 +62,6 @@ int main(int argc,char** argv) {
   ros::NodeHandle nh;
   
   LCM2ROS handlerObject(lcm, nh);
-  cout << "\nlcm2ros translator ready\n";
-  ROS_ERROR("LCM2ROS Translator Ready");
   
   while(0 == lcm->handle());
   return 0;

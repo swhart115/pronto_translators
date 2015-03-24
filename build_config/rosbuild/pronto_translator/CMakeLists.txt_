@@ -6,6 +6,8 @@ set(POD_NAME pronto_translator)
 
 rosbuild_init()
 
+include_directories($ENV{PRONTO_PATH}/build/include)
+
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 rosbuild_add_executable(lcm2ros src/lcm2ros.cpp)

@@ -81,29 +81,17 @@ class ProntoHelper:
         odom.pose.pose.orientation.y = data.filtered_imu.orientation.y
         odom.pose.pose.orientation.z = data.filtered_imu.orientation.z
         odom.pose.pose.orientation.w = data.filtered_imu.orientation.w
-        odom.twist = TwistWithCovariance()
         odom.twist.twist.linear.x = data.pos_est.velocity.x
         odom.twist.twist.linear.y = data.pos_est.velocity.y
         odom.twist.twist.linear.z = data.pos_est.velocity.z
         odom.twist.twist.angular.x = data.filtered_imu.angular_velocity.x
         odom.twist.twist.angular.y = data.filtered_imu.angular_velocity.y
         odom.twist.twist.angular.z = data.filtered_imu.angular_velocity.z
-
         self.odometry_pub.publish(odom)
 
 
 
 if __name__=="__main__":
-
-    parser = argparse.ArgumentParser(description='Pronto Helper')
-    # parser.add_argument('-r, --robot', dest='robot', help='e.g. r2')
-    
-    args = parser.parse_args()
-
     rospy.init_node("pronto_helper")
-
     robot = ProntoHelper()
-
-    r = rospy.Rate(50.0)
-    while not rospy.is_shutdown():
-        r.sleep()
+    rospy.spin()
