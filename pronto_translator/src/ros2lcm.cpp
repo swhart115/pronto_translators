@@ -78,9 +78,15 @@ void ROS_2_LCM::lidar_cb(const sensor_msgs::LaserScanConstPtr& msg){
 void ROS_2_LCM::head_joint_states_cb(const sensor_msgs::JointStateConstPtr& msg){
   pronto::multisense_state_t msg_out;
   msg_out.utime = (int64_t) floor(msg->header.stamp.toNSec()/1000);
+  for (std::vector<int>::size_type i = 0; i < 13; i++) {
+      msg_out.joint_name.push_back("z");
+      msg_out.joint_position.push_back(0);
+      msg_out.joint_velocity.push_back(0);
+      msg_out.joint_effort.push_back(0);
+  } 
   msg_out.num_joints = 1;
-  msg_out.joint_position.push_back(msg->position[0]);
-  msg_out.joint_velocity.push_back(msg->velocity[0]);
+  msg_out.joint_position[0] = msg->position[0];
+  msg_out.joint_velocity[0] = msg->velocity[0];
   msg_out.joint_name.push_back("hokuyo_joint");
   lcm_publish_.publish("MULTISENSE_STATE", &msg_out);  
 }
