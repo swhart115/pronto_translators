@@ -87,7 +87,7 @@ void ROS_2_LCM::head_joint_states_cb(const sensor_msgs::JointStateConstPtr& msg)
   msg_out.num_joints = 1;
   msg_out.joint_position[0] = msg->position[0];
   msg_out.joint_velocity[0] = msg->velocity[0];
-  msg_out.joint_name.push_back("hokuyo_joint");
+  msg_out.joint_name[0] = "hokuyo_joint";
   lcm_publish_.publish("MULTISENSE_STATE", &msg_out);  
 }
 
